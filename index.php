@@ -1,65 +1,51 @@
 <?php
 
-include 'db/conexion.php'; // Incluimos la conexión 
+include 'db/conexion.php';
+include 'includes/cabecera.php';
 
 $sql = "SELECT * FROM ligas";
-$resultado = mysqli_query($conexion, $sql);
+$resultado = pg_query($conexion, $sql);
 ?>
 
-<!DOCTYPE html>
-<html lang="es">
-<head>
+<h1>🏆 Mis Ligas</h1>
+<p>Panel principal para la gestión y visualización de tus competiciones activas.</p>
 
-    <meta charset="UTF-8">
-    <title>Gestión de Ligas - Página Principal</title>
-    
-</head>
-<body>
+<a href="nueva_liga.php" class="btn btn-nuevo">+ Nueva Liga</a>
 
-<?php 
-include 'db/conexion.php'; 
-include 'includes/cabecera.php'; 
-?>
-
-    <h1>🏆 Mis Ligas</h1>
-
-
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Nombre de la Liga</th>
-                <th>Deporte/Ámbito</th>
-                <th>Fecha de Inicio</th>
-                <th>Acciones</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Nombre de la Liga</th>
+            <th>Deporte / Ámbito</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        <?php
+        
+        if (pg_num_rows($resultado) > 0) {
             
-            if (mysqli_num_rows($resultado) > 0) { // si hay ligas, las mostramos
+            while($fila = pg_fetch_assoc($resultado)) {
+                echo "<tr>";
+                echo "<td>" . $fila['id_liga'] . "</td>";
+                echo "<td>" . $fila['nombre'] . "</td>";
+                echo "<td>" . $fila['deporte'] . "</td>";
                 
-                while($fila = mysqli_fetch_assoc($resultado)) {
-                    echo "<tr>";
-                    echo "<td>" . $fila['id_liga'] . "</td>";
-                    echo "<td>" . $fila['nombre'] . "</td>";
-                    echo "<td>" . $fila['tipo_liga'] . "</td>";
-                    echo "<td>" . $fila['fecha_inicio'] . "</td>";
-                    
-                    echo "<td><a href='ver_liga.php?id=" . $fila['id_liga'] . "' class='btn btn-ver'>Ver</a></td>";  // Enviamos el ID por la URL para saber qué liga ver
-                    echo "</tr>";
-                }
-            } else {
-                echo "<tr><td colspan='5'>No hay ligas creadas todavía. ¡Crea tu primera liga!</td></tr>";
+                echo "<td><a href='ver_liga.php?id=" . $fila['id_liga'] . "' class='btn btn-ver'>Ver Clasificación</a></td>";
+                echo "</tr>";
             }
-            ?>
-        </tbody>
-    </table>
+            
+        } else {
+            
+            echo "<tr><td colspan='4' style='text-align: center;'>No pertences a ninguna liga.<br>Únete a una liga o crea la tuya.</td></tr>";
+        }
+        ?>
+    </tbody>
+</table>
 
+<?php
 
-<?php 
-include 'includes/pie.php'; // Esto mete los créditos y cierra el HTML
+include 'includes/pie.php';
+
 ?>
-
-</body>
-</html>

@@ -1,18 +1,15 @@
 <?php
-$servidor = "localhost";    
-$usuario  = "root";         
-$password = "";             
-$base_datos = "gestion_ligas"; 
+$host = "localhost";
+$port = "5432";
+$dbname = "ligago_db";
+$user = "postgres";
+$password = "1234";
 
-// Crear la conexión
-$conexion = mysqli_connect($servidor, $usuario, $password, $base_datos);
+$cadena_conexion = "host=$host port=$port dbname=$dbname user=$user password=$password";
 
-// Comprobar si la conexión ha fallado
+$conexion = pg_connect($cadena_conexion);
+
 if (!$conexion) {
-    die("Error de conexión: " . mysqli_connect_error());
+    die("Error crítico: No se ha podido conectar a la base de datos PostgreSQL.");
 }
-
-// Configurar el idioma para que se vean las tildes y la ñ
-mysqli_set_charset($conexion, "utf8");
-
 ?>
