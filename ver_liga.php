@@ -1,83 +1,73 @@
 <?php
+
 include 'db/conexion.php';
+include 'includes/cabecera.php';
 
-// Recogemos el ID de la liga que viene por la URL
-if (isset($_GET['id'])) {
-    $id_liga = $_GET['id'];
+// intval() para asegurar que el valor es un entero
+$id_liga = intval($_GET['id']);
 
-    $sql_liga = "SELECT nombre FROM ligas WHERE id_liga = $id_liga";
-    $res_liga = mysqli_query($conexion, $sql_liga);
-    $datos_liga = mysqli_fetch_assoc($res_liga);
 
-    // unimos Equipos y Clasificaciones para ver la clasificación
-    // La ordenamos por puntos de mayor a menor
-    $sql_clasificacion = "SELECT e.nombre, c.puntos, c.pj, c.pg, c.pe, c.pp 
-                          FROM equipos e
-                          JOIN clasificaciones c ON e.id_equipo = c.id_equipo
-                          WHERE e.id_liga = $id_liga
-                          ORDER BY c.puntos DESC";
-    $resultado = mysqli_query($conexion, $sql_clasificacion);
-} else {
-    // Si no hay ID, volvemos al índice
-    header("Location: index.php");
-}
+$sql_liga = "SELECT * FROM ligas WHERE id_liga = $id_liga";
+$res_liga = pg_query($conexion, $sql_liga);
+$liga = pg_fetch_assoc($res_liga);
+
+
+$sql_clasificacion = 
+    "SELECT e.nombre, c.puntos, c.pj, c.pg, c.pe, c.pp 
+    FROM equipos e 
+    INNER JOIN clasificaciones c ON e.id_equipo = c.id_equipo 
+    WHERE e.id_liga = $id_liga 
+    ORDER BY c.puntos DESC, c.pg DESC";
+
+$res_clasificacion = pg_query($conexion, $sql_clasificacion);
 ?>
 
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Clasificación - <?php echo $datos_liga['nombre']; ?></title>
-    <link rel="stylesheet" href="css/estilo.css">
-</head>
-<body>
+<h2>🏆 Clasificación: <?php echo $liga['nombre']; ?></h2>
+<p>Deporte: <strong><?php echo $liga['deporte']; ?></strong></p>
 
-<?php 
-include 'db/conexion.php'; 
-include 'includes/cabecera.php'; // Esto mete el <head>, el CSS y el menú
-?>
+<div style="margin-bottom: 20px;">
+    <a href="añadir_equipo.php?id=<?php echo $id_liga; ?>" class="btn btn-gestion">+ Añadir Equipo</a>
+    <a href="añadir_partido.php?id=<?php echo $id_liga; ?>" class="btn btn-gestion">⚽ Añadir Partido</a>
+    <a href="gestionar_liga.php?id=<?php echo $id_liga; ?>" class="btn" style="background-color: #95a5a6; color: white;">⚙️ Ajustes</a>
+</div>
 
-    
-    <h1>📊 Clasificación: <?php echo $datos_liga['nombre']; ?></h1>
-
-    <table>
-        <thead>
-            <tr>
-                <th>Posición</th>
-                <th>Equipo</th>
-                <th>Puntos</th>
-                <th>PJ</th>
-                <th>PG</th>
-                <th>PE</th>
-                <th>PP</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php
+<table>
+    <thead>
+        <tr>
+            <th>Pos</th>
+            <th>Equipo</th>
+            <th>Puntos</th>
+            <th>PJ</th>
+            <th>PG</th>
+            <th>PE</th>
+            <th>PP</th>
+        </tr>
+    </thead>
+    <tbody>
+        <?php
+        
+        if (pg_num_rows($res_clasificacion) > 0) {
             $posicion = 1;
-            if (mysqli_num_rows($resultado) > 0) {
-                while($fila = mysqli_fetch_assoc($resultado)) {
-                    echo "<tr>";
-                    echo "<td><strong>" . $posicion++ . "º</strong></td>";
-                    echo "<td>" . $fila['nombre'] . "</td>";
-                    echo "<td>" . $fila['puntos'] . "</td>";
-                    echo "<td>" . $fila['pj'] . "</td>";
-                    echo "<td>" . $fila['pg'] . "</td>";
-                    echo "<td>" . $fila['pe'] . "</td>";
-                    echo "<td>" . $fila['pp'] . "</td>";
-                    echo "</tr>";
-                }
-            } else {
-                echo "<tr><td colspan='7'>Aún no hay equipos o datos en esta liga.</td></tr>";
+            while($fila = pg_fetch_assoc($res_clasificacion)) {
+                echo "<tr>";
+                echo "<td>" . $posicion . "</td>";
+                echo "<td><strong>" . $fila['nombre'] . "</strong></td>";
+                echo "<td><strong style='color: #20c997;'>" . $fila['puntos'] . "</strong></td>";
+                echo "<td>" . $fila['pj'] . "</td>";
+                echo "<td>" . $fila['pg'] . "</td>";
+                echo "<td>" . $fila['pe'] . "</td>";
+                echo "<td>" . $fila['pp'] . "</td>";
+                echo "</tr>";
+                $posicion++;
             }
-            ?>
-        </tbody>
-    </table>
+        } else {
+            // mensaje si la liga está vacía
+            echo "<tr><td colspan='7' style='text-align: center;'>Aún no hay equipos inscritos en esta competición.</td></tr>";
+        }
+        ?>
+    </tbody>
+</table>
 
-    
-    <input type="button" value="Añadir Resultados" onclick="location.href='añadir_partido.php?id=<?php echo $id_liga; ?>'">
-    <input type="button" value="Gestionar Liga" onclick="location.href='gestionar_liga.php?id=<?php echo $id_liga; ?>'">
-    
-
-</body>
-</html>
+<?php
+include 'includes/pie.php';
+?>

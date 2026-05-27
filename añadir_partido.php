@@ -1,119 +1,82 @@
 <?php
 include 'db/conexion.php';
-$id_liga = $_GET['id'];
+include 'includes/cabecera.php';
+
+$id_liga = intval($_GET['id']);
 
 $sql_equipos = "SELECT id_equipo, nombre FROM equipos WHERE id_liga = $id_liga";
-$res_equipos = mysqli_query($conexion, $sql_equipos);
+$res_equipos = pg_query($conexion, $sql_equipos);
+
 $equipos = [];
-while($fila = mysqli_fetch_assoc($res_equipos)) {
+while($fila = pg_fetch_assoc($res_equipos)) {
     $equipos[] = $fila;
 }
 
-// guardar el partido al pulsar el botón
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $local     = $_POST['local'];
-    $visitante = $_POST['visitante'];
-    $goles_l   = $_POST['goles_l'];
-    $goles_v   = $_POST['goles_v'];
-    $resultado = $goles_l . "-" . $goles_v;
-
-    $sql_insert = "INSERT INTO partidos (id_liga, id_equipo_local, id_equipo_visitante, resultado, estado) 
-                   VALUES ($id_liga, $local, $visitante, '$resultado', 'jugado')";
     
-    if (mysqli_query($conexion, $sql_insert)) {
-        
-        // --- CÁLCULO DE PUNTOS ---
-        $puntos_l = 0; $puntos_v = 0;
-        $pg_l = 0; $pe_l = 0; $pp_l = 0;
-        $pg_v = 0; $pe_v = 0; $pp_v = 0;
+    $local = intval($_POST['local']);
+    $visitante = intval($_POST['visitante']);
+    $goles_l = intval($_POST['goles_l']);
+    $goles_v = intval($_POST['goles_v']);
 
-        if ($goles_l > $goles_v) { 
-            $puntos_l = 3; $pg_l = 1; $pp_v = 1; 
-        } elseif ($goles_l < $goles_v) { 
-            $puntos_v = 3; $pg_v = 1; $pp_l = 1; 
-        } else { 
-            $puntos_l = 1; $pe_l = 1; $puntos_v = 1; $pe_v = 1; 
-        }
-
-        // --- ACTUALIZACIÓN CON REPORTE DE ERRORES ---
-        
-        $up_local = "UPDATE clasificaciones SET 
-            puntos = puntos + $puntos_l, pj = pj + 1, pg = pg + $pg_l, pe = pe + $pe_l, pp = pp + $pp_l 
-            WHERE id_equipo = $local";
-        
-        if(!mysqli_query($conexion, $up_local)) {
-            die("Error actualizando local: " . mysqli_error($conexion));
-        }
-
-        $up_visit = "UPDATE clasificaciones SET 
-            puntos = puntos + $puntos_v, pj = pj + 1, pg = pg + $pg_v, pe = pe + $pe_v, pp = pp + $pp_v 
-            WHERE id_equipo = $visitante";
-
-        if(!mysqli_query($conexion, $up_visit)) {
-            die("Error actualizando visitante: " . mysqli_error($conexion));
-        }
-
-        // Si el número de filas afectadas es 0, es que el equipo no estaba en la tabla clasificaciones
-        if (mysqli_affected_rows($conexion) == 0) {
-            echo "Aviso: El partido se guardó, pero los equipos no tienen fila en la tabla clasificaciones.";
-            echo "<br><a href='index.php'>Volver</a>";
-            exit();
-        }
-
-        header("Location: ver_liga.php?id=$id_liga");
-        exit();
+    if ($local === $visitante) {
+        echo "<p style='color: red; font-weight: bold;'>Error: Un equipo no puede jugar contra sí mismo.</p>";
     } else {
-        echo "Error al guardar el partido: " . mysqli_error($conexion);
+        
+        $sql_insert = "INSERT INTO partidos (id_liga, id_local, id_visitante, goles_local, goles_visitante) 
+                       VALUES ($id_liga, $local, $visitante, $goles_l, $goles_v)";
+        
+        if (pg_query($conexion, $sql_insert)) {
+            
+            header("Location: ver_liga.php?id=$id_liga");
+            exit();
+        } else {
+            echo "<p style='color: red; font-weight: bold;'>Error al guardar el resultado.</p>";
+        }
     }
 }
 ?>
 
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Añadir Partido</title>
-    <link rel="stylesheet" href="css/estilo.css">
-</head>
-<body>
+<h2>⚽ Registrar Resultado</h2>
+<p>Añade el resultado de un nuevo enfrentamiento.</p>
 
-<?php 
-include 'db/conexion.php'; 
-include 'includes/cabecera.php'; // Esto mete el <head>, el CSS y el menú
-?>
-
-    <h1>⚽ Registrar Nuevo Partido</h1>
+<form method="POST" action="añadir_partido.php?id=<?php echo $id_liga; ?>">
     
-    <form method="POST" style="max-width: 500px; background: white; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
-        
-        <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
-            <div style="width: 45%;">
-                <label><strong>Equipo Local:</strong></label><br>
-                <select name="local" required style="width: 100%; padding: 8px; margin-top: 5px;">
-                    <?php foreach($equipos as $e) { 
-                        echo "<option value='".$e['id_equipo']."'>".$e['nombre']."</option>"; 
-                    } ?>
-                </select><br><br>
-                <label>Goles Local:</label><br>
-                <input type="number" name="goles_l" value="0" min="0" style="width: 50px; padding: 5px;">
-            </div>
-
-            <div style="align-self: center; font-weight: bold; font-size: 1.5em;">VS</div>
-
-            <div style="width: 45%;">
-                <label><strong>Equipo Visitante:</strong></label><br>
-                <select name="visitante" required style="width: 100%; padding: 8px; margin-top: 5px;">
-                    <?php foreach($equipos as $e) { 
-                        echo "<option value='".$e['id_equipo']."'>".$e['nombre']."</option>"; 
-                    } ?>
-                </select><br><br>
-                <label>Goles Visitante:</label><br>
-                <input type="number" name="goles_v" value="0" min="0" style="width: 50px; padding: 5px;">
-            </div>
+    <div style="display: flex; gap: 20px; margin-bottom: 15px;">
+        <div style="flex: 1;">
+            <label for="local">Equipo Local:</label>
+            <select id="local" name="local" required>
+                <option value="">-- Selecciona Local --</option>
+                <?php foreach($equipos as $eq) { echo "<option value='{$eq['id_equipo']}'>{$eq['nombre']}</option>"; } ?>
+            </select>
         </div>
 
-        <button type="submit" class="btn" style="background-color: #f39c12; width: 100%;">Guardar Resultado</button>
-        <p style="text-align: center;"><a href="ver_liga.php?id=<?php echo $id_liga; ?>" style="color: #666;">Cancelar</a></p>
-    </form>
-</body>
-</html>
+        <div style="flex: 1;">
+            <label for="visitante">Equipo Visitante:</label>
+            <select id="visitante" name="visitante" required>
+                <option value="">-- Selecciona Visitante --</option>
+                <?php foreach($equipos as $eq) { echo "<option value='{$eq['id_equipo']}'>{$eq['nombre']}</option>"; } ?>
+            </select>
+        </div>
+    </div>
+
+    <div style="display: flex; gap: 20px; margin-bottom: 20px;">
+        <div style="flex: 1;">
+            <label for="goles_l">Goles Local:</label>
+            <input type="number" id="goles_l" name="goles_l" min="0" required>
+        </div>
+
+        <div style="flex: 1;">
+            <label for="goles_v">Goles Visitante:</label>
+            <input type="number" id="goles_v" name="goles_v" min="0" required>
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-nuevo">Guardar Resultado</button>
+    <a href="ver_liga.php?id=<?php echo $id_liga; ?>" class="btn btn-ver" style="margin-left: 10px;">Cancelar</a>
+    
+</form>
+
+<?php 
+include 'includes/pie.php';
+?>

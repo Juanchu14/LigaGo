@@ -1,68 +1,71 @@
 <?php
 include 'db/conexion.php';
-$id_liga = $_GET['id'];
+include 'includes/cabecera.php';
 
-// 1. Cargar datos actuales
-$res = mysqli_query($conexion, "SELECT * FROM ligas WHERE id_liga = $id_liga");
-$liga = mysqli_fetch_assoc($res);
+$id_liga = intval($_GET['id']);
 
-// 2. Lógica de actualización
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $nom = $_POST['nombre'];
-    $reg = $_POST['reglas'];
-    
-    $sql_update = "UPDATE ligas SET nombre = '$nom', reglas = '$reg' WHERE id_liga = $id_liga";
-    if (mysqli_query($conexion, $sql_update)) {
-        header("Location: ver_liga.php?id=$id_liga");
+    $accion = $_POST['accion'];
+
+    if ($accion == 'editar') {
+        
+        $nombre = $_POST['nombre'];
+        $deporte = $_POST['deporte'];
+        $reglas = $_POST['reglas'];
+
+        $sql_update = "UPDATE ligas SET nombre='$nombre', deporte='$deporte', reglas='$reglas' WHERE id_liga=$id_liga";
+        pg_query($conexion, $sql_update);
+        
+        
+        header("Location: gestionar_liga.php?id=$id_liga&msg=ok");
+        exit();
+
+    } elseif ($accion == 'eliminar') {
+        
+        $sql_delete = "DELETE FROM ligas WHERE id_liga=$id_liga";
+        pg_query($conexion, $sql_delete);
+        
+        
+        header("Location: index.php");
+        exit();
     }
 }
+
+$sql_liga = "SELECT * FROM ligas WHERE id_liga = $id_liga";
+$res_liga = pg_query($conexion, $sql_liga);
+$liga = pg_fetch_assoc($res_liga);
 ?>
 
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Gestionar Liga</title>
-    <link rel="stylesheet" href="css/estilo.css">
-</head>
-<body>
+<h2>⚙️ Gestionar Competición</h2>
 
-<?php 
-include 'db/conexion.php'; 
-include 'includes/cabecera.php'; // Esto mete el <head>, el CSS y el menú
-?>
+<?php if(isset($_GET['msg']) && $_GET['msg'] == 'ok'): ?>
+    <p style="color: #20c997; font-weight: bold; background: #e8f9f2; padding: 10px; border-radius: 5px;">✅ Cambios guardados correctamente.</p>
+<?php endif; ?>
 
-    <h1>⚙️ Configuración de la Liga</h1>
-    <form method="POST" style="max-width: 500px; background: white; padding: 20px; border: 1px solid #ddd;">
-        <label>Nombre de la liga:</label><br>
-        <input type="text" name="nombre" value="<?php echo $liga['nombre']; ?>" style="width: 100%; margin-bottom: 15px;">
-        
-        <label>Reglas / Descripción:</label><br>
-        <textarea name="reglas" rows="5" style="width: 100%; margin-bottom: 15px;"><?php echo $liga['reglas']; ?></textarea>
+<form method="POST" action="gestionar_liga.php?id=<?php echo $id_liga; ?>">
+    <input type="hidden" name="accion" value="editar">
+    
+    <label for="nombre">Nombre de la Liga:</label>
+    <input type="text" id="nombre" name="nombre" value="<?php echo $liga['nombre']; ?>" required>
 
-        <h3>Equipos Participantes</h3>
-        <input type="button" value="+ Añadir Nuevo Equipo" onclick="location.href='añadir_equipo.php?id=<?php echo $id_liga; ?>'">
+    <label for="deporte">Deporte o Ámbito:</label>
+    <input type="text" id="deporte" name="deporte" value="<?php echo $liga['deporte']; ?>" required>
 
-        <button type="submit" class="btn" style="background-color: #7f8c8d;">Actualizar Datos</button>
-        <a href="ver_liga.php?id=<?php echo $id_liga; ?>">Volver sin cambios</a>
+    <label for="reglas">Reglas (Opcional):</label>
+    <textarea id="reglas" name="reglas" rows="4"><?php echo $liga['reglas']; ?></textarea>
+
+    <button type="submit" class="btn btn-nuevo">Actualizar Datos</button>
+    <a href="ver_liga.php?id=<?php echo $id_liga; ?>" class="btn btn-ver" style="margin-left: 10px;">Volver a Clasificación</a>
+</form>
+
+<div style="margin-top: 40px; padding: 20px; border: 2px dashed #e74c3c; border-radius: 10px; background-color: #fdf5f5;">
+    <h3 style="color: #e74c3c; margin-top: 0;">⚠️ Zona de Peligro</h3>
+    <p>Si eliminas esta liga, se borrarán de forma irreversible todos los equipos, partidos y clasificaciones asociadas. Esta acción no se puede deshacer.</p>
+    
+    <form method="POST" action="gestionar_liga.php?id=<?php echo $id_liga; ?>" onsubmit="return confirm('¿Estás COMPLETAMENTE SEGURO de que quieres borrar esta liga?');" style="box-shadow: none; padding: 0; background: none;">
+        <input type="hidden" name="accion" value="eliminar">
+        <button type="submit" class="btn" style="background-color: #e74c3c; color: white;">🗑️ Eliminar Liga Definitivamente</button>
     </form>
-    <div style="margin-top: 20px;">
-    <h4>Equipos inscritos actualmente:</h4>
-    <ul style="background: #f9f9f9; padding: 15px; border-radius: 5px; border: 1px solid #eee;">
-        <?php
-        // Consultamos los equipos de esta liga
-        $sql_lista = "SELECT nombre FROM equipos WHERE id_liga = $id_liga";
-        $res_lista = mysqli_query($conexion, $sql_lista);
-        
-        if (mysqli_num_rows($res_lista) > 0) {
-            while($equipo = mysqli_fetch_assoc($res_lista)) {
-                echo "<li>🛡️ " . $equipo['nombre'] . "</li>";
-            }
-        } else {
-            echo "<li>Aún no hay equipos en esta liga.</li>";
-        }
-        ?>
-    </ul>
 </div>
-</body>
-</html>
+
+<?php include 'includes/pie.php'; ?>
